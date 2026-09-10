@@ -18,35 +18,26 @@ type Cadastro = {
   tipoCadastro: string;
 };
 
+type FormData = Omit<Cadastro, "id">;
+
 const STORAGE_KEY = "prodpcp-cadastros";
 const SMALL_WORDS = new Set(["de", "da", "do", "das", "dos", "e", "em", "com", "por", "para"]);
 
 function properCase(value: string) {
-  return value
-    .toLocaleLowerCase("pt-BR")
-    .trim()
-    .split(/\s+/)
-    .map((word, index) => {
-      if (index > 0 && SMALL_WORDS.has(word)) return word;
-      return word.charAt(0).toLocaleUpperCase("pt-BR") + word.slice(1);
-    })
-    .join(" ");
+  return value.toLocaleLowerCase("pt-BR").trim().split(/\s+/).map((word, index) => {
+    if (index > 0 && SMALL_WORDS.has(word)) return word;
+    return word.charAt(0).toLocaleUpperCase("pt-BR") + word.slice(1);
+  }).join(" ");
 }
 
 function formatCnpj(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 14);
-  return digits
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
+  return digits.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2");
 }
 
 function formatPhone(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) {
-    return digits.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
-  }
+  if (digits.length <= 10) return digits.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
   return digits.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
 }
 
@@ -66,15 +57,12 @@ function isValidCnpj(value: string) {
   return calc(12) === Number(digits[12]) && calc(13) === Number(digits[13]);
 }
 
-function emptyForm(): Omit<Cadastro, "id"> {
-  return {
-    cnpj: "", razaoSocial: "", nomeFantasia: "", numeroObra: "", endereco: "", bairro: "",
-    municipio: "", responsavel: "", telefone: "", tipoMaterial: "", clienteObra: "", tipoCadastro: "",
-  };
+function emptyForm(): FormData {
+  return { cnpj: "", razaoSocial: "", nomeFantasia: "", numeroObra: "", endereco: "", bairro: "", municipio: "", responsavel: "", telefone: "", tipoMaterial: "", clienteObra: "", tipoCadastro: "" };
 }
 
 export default function Home() {
-  const [form, setForm] = useState(emptyForm());
+  const [form, setForm] = useState<FormData>(emptyForm());
   const [cadastros, setCadastros] = useState<Cadastro[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -85,7 +73,7 @@ export default function Home() {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) setCadastros(JSON.parse(saved));
     } catch {
-      // Ignora dados locais inválidos.
+      // Dados locais inválidos são ignorados.
     }
   }, []);
 
@@ -93,7 +81,7 @@ export default function Home() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cadastros));
   }, [cadastros]);
 
-  const update = (field: keyof typeof form, value: string) => {
+  const update = (field: keyof FormData, value: string) => {
     setMessage(null);
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -101,21 +89,16 @@ export default function Home() {
   const filteredCadastros = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
     if (!term) return cadastros;
-    return cadastros.filter((item) =>
-      [item.cnpj, item.razaoSocial, item.nomeFantasia, item.municipio, item.tipoCadastro]
-        .some((value) => value.toLocaleLowerCase("pt-BR").includes(term))
-    );
+    return cadastros.filter((item) => [item.cnpj, item.razaoSocial, item.nomeFantasia, item.municipio, item.tipoCadastro].some((value) => value.toLocaleLowerCase("pt-BR").includes(term)));
   }, [cadastros, search]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     if (!isValidCnpj(form.cnpj)) {
       setMessage({ type: "error", text: "Informe um CNPJ válido." });
       return;
     }
-
-    const required: Array<keyof typeof form> = ["razaoSocial", "nomeFantasia", "endereco", "municipio", "tipoMaterial", "tipoCadastro"];
+    const required: Array<keyof FormData> = ["razaoSocial", "nomeFantasia", "endereco", "municipio", "tipoMaterial", "tipoCadastro"];
     if (required.some((field) => !form[field].trim())) {
       setMessage({ type: "error", text: "Preencha os campos obrigatórios." });
       return;
@@ -131,19 +114,20 @@ export default function Home() {
     if (editingId) {
       setCadastros((current) => current.map((item) => item.id === editingId ? { ...item, ...form } : item));
       setMessage({ type: "success", text: "Cadastro atualizado com sucesso." });
-      setEditingId(null);
     } else {
-      const novo: Cadastro = { id: crypto.randomUUID(), ...form };
-      setCadastros((current) => [novo, ...current]);
+      setCadastros((current) => [{ id: crypto.randomUUID(), ...form }, ...current]);
       setMessage({ type: "success", text: "Cadastro realizado com sucesso." });
     }
 
+    setEditingId(null);
     setForm(emptyForm());
   };
 
   const handleEdit = (item: Cadastro) => {
+    const { id, ...data } = item;
+    void id;
     setEditingId(item.id);
-    setForm({ ...item, id: undefined as never });
+    setForm(data);
     setMessage(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -175,13 +159,7 @@ export default function Home() {
           </div>
 
           <div className="card">
-            <div className="card-header">
-              <div>
-                <h2 className="card-title">{editingId ? "Editar cadastro" : "Novo cadastro"}</h2>
-                <div className="card-subtitle">Campos marcados com <span className="required">*</span> são obrigatórios. O CNPJ não pode ser repetido.</div>
-              </div>
-            </div>
-
+            <div className="card-header"><div><h2 className="card-title">{editingId ? "Editar cadastro" : "Novo cadastro"}</h2><div className="card-subtitle">Campos marcados com <span className="required">*</span> são obrigatórios. O CNPJ não pode ser repetido.</div></div></div>
             <form className="form" onSubmit={handleSubmit}>
               <div className="grid">
                 <div className="field span-4"><label htmlFor="cnpj">CNPJ <span className="required">*</span></label><input id="cnpj" value={form.cnpj} onChange={(e) => update("cnpj", formatCnpj(e.target.value))} placeholder="00.000.000/0000-00" inputMode="numeric" maxLength={18} /></div>
@@ -203,18 +181,13 @@ export default function Home() {
           </div>
 
           <div className="card list-card">
-            <div className="card-header list-header">
-              <div><h2 className="card-title">Clientes e fornecedores cadastrados</h2><div className="card-subtitle">Consulte rapidamente e edite os dados quando necessário.</div></div>
-              <div className="record-count">{filteredCadastros.length} {filteredCadastros.length === 1 ? "registro" : "registros"}</div>
-            </div>
+            <div className="card-header list-header"><div><h2 className="card-title">Clientes e fornecedores cadastrados</h2><div className="card-subtitle">Consulte rapidamente e edite os dados quando necessário.</div></div><div className="record-count">{filteredCadastros.length} {filteredCadastros.length === 1 ? "registro" : "registros"}</div></div>
             <div className="list-toolbar"><div className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por CNPJ, razão social, nome fantasia, município..." /></div></div>
             <div className="table-wrap">
               <table>
                 <thead><tr><th>CNPJ</th><th>Razão Social</th><th>Nome Fantasia</th><th>Material</th><th>Tipo</th><th>Município</th><th className="action-col">Ação</th></tr></thead>
                 <tbody>
-                  {filteredCadastros.length === 0 ? <tr><td colSpan={7} className="empty-state">{search ? "Nenhum cadastro encontrado para esta busca." : "Nenhum cliente ou fornecedor cadastrado ainda."}</td></tr> : filteredCadastros.map((item) => (
-                    <tr key={item.id}><td className="cnpj-cell">{item.cnpj}</td><td>{item.razaoSocial}</td><td><strong>{item.nomeFantasia}</strong></td><td>{item.tipoMaterial}</td><td><span className="badge">{item.tipoCadastro}</span></td><td>{item.municipio}</td><td className="action-col"><button className="edit-btn" type="button" onClick={() => handleEdit(item)}>Editar</button></td></tr>
-                  ))}
+                  {filteredCadastros.length === 0 ? <tr><td colSpan={7} className="empty-state">{search ? "Nenhum cadastro encontrado para esta busca." : "Nenhum cliente ou fornecedor cadastrado ainda."}</td></tr> : filteredCadastros.map((item) => <tr key={item.id}><td className="cnpj-cell">{item.cnpj}</td><td>{item.razaoSocial}</td><td><strong>{item.nomeFantasia}</strong></td><td>{item.tipoMaterial}</td><td><span className="badge">{item.tipoCadastro}</span></td><td>{item.municipio}</td><td className="action-col"><button className="edit-btn" type="button" onClick={() => handleEdit(item)}>Editar</button></td></tr>)}
                 </tbody>
               </table>
             </div>
