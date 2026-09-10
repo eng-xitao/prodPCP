@@ -1,0 +1,13 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type Cliente = { id:string; cnpj:string; razaoSocial:string; nomeFantasia:string; numeroObra:string; endereco:string; bairro:string; municipio:string; responsavel:string; telefone:string; tipoMaterial:string; clienteObra:string; tipoCadastro:string };
+const KEY = "prodpcp-clientes-fornecedores";
+
+export default function PesquisaClientesFornecedores() {
+  const [items,setItems]=useState<Cliente[]>([]); const [search,setSearch]=useState("");
+  useEffect(()=>{ try { setItems(JSON.parse(localStorage.getItem(KEY)||"[]")); } catch { setItems([]); } },[]);
+  const filtered=useMemo(()=>{const q=search.toLocaleLowerCase("pt-BR").trim();if(!q)return items;return items.filter(x=>Object.values(x).some(v=>v.toLocaleLowerCase("pt-BR").includes(q)));},[items,search]);
+  return <div className="app-shell"><aside className="sidebar"><img src="/prodpcp-logo.svg" alt="ProdPCP" className="logo"/><div className="menu-label">Cadastros</div><a className="menu-item" href="/cadastros/clientes-fornecedores"><span className="menu-icon">▦</span><span>Clientes e Fornecedores</span></a><a className="menu-item active" href="/cadastros/clientes-fornecedores/pesquisa"><span className="menu-icon">⌕</span><span>Pesquisa</span></a></aside><main className="main"><header className="topbar"><div className="breadcrumb">Cadastros &nbsp;/&nbsp; Clientes e Fornecedores &nbsp;/&nbsp; <strong>Pesquisa</strong></div><div className="user-chip"><span className="avatar">PCP</span> ProdPCP</div></header><section className="content"><div className="page-heading"><h1>Pesquisa de Clientes e Fornecedores</h1><p>Consulte, filtre e edite os cadastros existentes.</p></div><div className="card"><div className="search-bar"><div className="search-input"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por CNPJ, razão social, nome fantasia, município..."/></div><a className="btn btn-primary" href="/cadastros/clientes-fornecedores">+ Novo cadastro</a></div><div className="table-wrap"><table><thead><tr><th>Nome Fantasia</th><th>Razão Social</th><th>CNPJ</th><th>Tipo</th><th>Material</th><th>Município</th><th></th></tr></thead><tbody>{filtered.length?filtered.map(x=><tr key={x.id}><td><strong>{x.nomeFantasia}</strong></td><td>{x.razaoSocial}</td><td>{x.cnpj}</td><td>{x.tipoCadastro}</td><td>{x.tipoMaterial}</td><td>{x.municipio}</td><td><a className="edit-link" href={`/cadastros/clientes-fornecedores?edit=${x.id}`}>Editar</a></td></tr>):<tr><td colSpan={7} className="empty-state">Nenhum cadastro encontrado.</td></tr>}</tbody></table></div><div className="table-footer">{filtered.length} cadastro(s) encontrado(s)</div></div></section></main></div>;
+}
