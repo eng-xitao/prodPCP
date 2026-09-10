@@ -1,5 +1,5 @@
 "use client";
-import "../search.css";
+import "./search.css";
 import { useEffect, useMemo, useState } from "react";
 type Cliente={id:string;cnpj:string;razaoSocial:string;nomeFantasia:string;numeroObra:string;endereco:string;bairro:string;municipio:string;responsavel:string;telefone:string;tipoMaterial:string;clienteObra:string;tipoCadastro:string};
 const KEY="prodpcp-clientes-fornecedores";
